@@ -114,6 +114,20 @@ def agent_loop(messages: list):
 
 
 # ── Entry point ──────────────────────────────────────────
+
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    import json
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 if __name__ == "__main__":
     print("s01: Agent Loop")
     print("输入问题，回车发送。输入 q 退出。\n")
@@ -135,3 +149,4 @@ if __name__ == "__main__":
                 if getattr(block, "type", None) == "text":
                     print(block.text)
         print()
+        print_history(history)

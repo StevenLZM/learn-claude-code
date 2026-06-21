@@ -2085,6 +2085,20 @@ def cron_autorun_loop(history: list, context: dict):
             print_turn_assistants(history, turn_start)
 
 
+
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    import json
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 if __name__ == "__main__":
     CLI_ACTIVE = True
     print("s20: comprehensive agent")
@@ -2107,6 +2121,7 @@ if __name__ == "__main__":
             agent_loop(history, context)
             context = update_context(context, history)
             print_turn_assistants(history, turn_start)
+            print_history(history)
 
         inbox = consume_lead_inbox(route_protocol=True)
         if inbox:

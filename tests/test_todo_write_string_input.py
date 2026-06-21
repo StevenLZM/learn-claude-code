@@ -110,6 +110,29 @@ class TodoWriteStringInputTests(unittest.TestCase):
                 self.assertIn("Error:", result)
                 self.assertFalse(marker.exists())
 
+    def test_s05_formats_full_history_as_json(self):
+        class FakeBlock:
+            def model_dump(self):
+                return {"type": "text", "text": "done"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            module = load_course_module(
+                "s05",
+                REPO_ROOT / "s05_todo_write" / "code.py",
+                Path(tmp),
+            )
+            history = [
+                {"role": "user", "content": "hello"},
+                {"role": "assistant", "content": [FakeBlock()]},
+            ]
+
+            formatted = module.format_history(history)
+
+            self.assertIn('"role": "user"', formatted)
+            self.assertIn('"content": "hello"', formatted)
+            self.assertIn('"type": "text"', formatted)
+            self.assertIn('"text": "done"', formatted)
+
 
 if __name__ == "__main__":
     unittest.main()

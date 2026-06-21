@@ -154,6 +154,18 @@ def run_todo_write(todos: list) -> str:
     print("\n".join(lines))
     return f"Updated {len(CURRENT_TODOS)} tasks"
 
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 TOOLS = [
     {"name": "bash", "description": "Run a shell command.",
      "input_schema": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}},
@@ -248,6 +260,7 @@ def agent_loop(messages: list):
             tools=TOOLS, max_tokens=8000,
         )
         messages.append({"role": "assistant", "content": response.content})
+        print(f"llm response: {response.model_dump_json()}")
 
         if response.stop_reason != "tool_use":
             force = trigger_hooks("Stop", messages)
@@ -302,3 +315,4 @@ if __name__ == "__main__":
             if getattr(block, "type", None) == "text":
                 print(block.text)
         print()
+        print_history(history)

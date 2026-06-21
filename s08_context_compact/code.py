@@ -314,6 +314,23 @@ def collect_tool_results(messages):
     blocks = []
     for mi, msg in enumerate(messages):
         if msg.get("role") != "user" or not isinstance(msg.get("content"), list): continue
+        """blocks is a list of (message_index, block_index, block) for all tool_result blocks in user messages, e.g.
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "1",
+                        "content": "销售额100万"
+                    },
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "2",
+                        "content": "利润20万"
+                    }
+                ]
+            }
+        """
         for bi, block in enumerate(msg["content"]):
             if isinstance(block, dict) and block.get("type") == "tool_result":
                 blocks.append((mi, bi, block))
@@ -509,6 +526,20 @@ def agent_loop(messages: list):
         continue
 
 
+
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    import json
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 if __name__ == "__main__":
     print("s08: Context Compact — four-layer compaction pipeline")
     print("输入问题，回车发送。输入 q 退出。\n")
@@ -522,3 +553,4 @@ if __name__ == "__main__":
         for block in history[-1]["content"]:
             if getattr(block, "type", None) == "text": print(block.text)
         print()
+        print_history(history)

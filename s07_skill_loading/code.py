@@ -405,6 +405,20 @@ def agent_loop(messages: list):
         messages.append({"role": "user", "content": results})
 
 
+
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    import json
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 if __name__ == "__main__":
     print("s07: Skill Loading — catalog in SYSTEM, content on demand")
     print("Type a question, press Enter. Type q to quit.\n")
@@ -424,3 +438,4 @@ if __name__ == "__main__":
             if getattr(block, "type", None) == "text":
                 print(block.text)
         print()
+        print_history(history)

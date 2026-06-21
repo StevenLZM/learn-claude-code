@@ -759,6 +759,20 @@ def agent_loop(messages: list):
         messages.append({"role": "user", "content": results})
 
 
+
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    import json
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 if __name__ == "__main__":
     print(f"Repo root for s12: {REPO_ROOT}")
     if not WORKTREES.git_available:
@@ -780,3 +794,4 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
+        print_history(history)

@@ -850,6 +850,20 @@ def agent_loop(messages: list, context: dict):
         system = get_system_prompt(context)
 
 
+
+def _json_default(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return str(value)
+
+def format_history(history: list) -> str:
+    import json
+    return json.dumps(history, ensure_ascii=False, indent=2, default=_json_default)
+
+def print_history(history: list):
+    print("\n## Full History")
+    print(format_history(history))
+
 if __name__ == "__main__":
     print("s16: team protocols")
     print("Enter a question, press Enter to send. Type q to quit.\n")
@@ -878,3 +892,4 @@ if __name__ == "__main__":
                             "content": f"[Inbox]\n{inbox_text}"})
             print(f"\n\033[33m[Inbox: {len(inbox_msgs)} messages injected]\033[0m")
         print()
+        print_history(history)
