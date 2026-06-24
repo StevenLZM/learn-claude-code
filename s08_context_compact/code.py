@@ -293,18 +293,29 @@ def _is_tool_result_message(msg):
 
 # L1: snipCompact — trim middle messages
 def snip_compact(messages, max_messages=50):
+    # 1. 如果没超过阈值，不处理
     if len(messages) <= max_messages: return messages
+
+    # 2. 计算保留份额
     keep_head, keep_tail = 3, max_messages - 3
     head_end, tail_start = keep_head, len(messages) - keep_tail
+
+    # 3. 边界调整：如果开头最后一条是 tool_use，连带保留它的 tool_result
     if head_end > 0 and _message_has_tool_use(messages[head_end - 1]):
         while head_end < len(messages) and _is_tool_result_message(messages[head_end]):
             head_end += 1
+
+    # 4. 边界调整：如果尾部第一条是 tool_result，连带保留它对应的 tool_use
     if (tail_start > 0 and tail_start < len(messages)
             and _is_tool_result_message(messages[tail_start])
             and _message_has_tool_use(messages[tail_start - 1])):
         tail_start -= 1
+
+    # 5. 如果头尾重叠，不裁剪
     if head_end >= tail_start:
         return messages
+    
+    # 6. 裁剪中间，插入占位
     snipped = tail_start - head_end
     return messages[:head_end] + [{"role": "user", "content": f"[snipped {snipped} messages]"}] + messages[tail_start:]
 
@@ -337,7 +348,11 @@ def collect_tool_results(messages):
     return blocks
 
 def micro_compact(messages):
+    # 1. 收集所有 tool_result
     tool_results = collect_tool_results(messages)
+    # tool_results = [(2,0,block1), (4,0,block2), (6,0,block3), (8,0,block4), (10,0,block5), (12,0,block6)]
+
+    # 2. 如果总数 <= 3（KEEP_RECENT），不处理
     if len(tool_results) <= KEEP_RECENT: return messages
     for _, _, block in tool_results[:-KEEP_RECENT]:
         if len(block.get("content", "")) > 120:
@@ -354,17 +369,27 @@ def persist_large_output(tool_use_id, output):
     return f"<persisted-output>\nFull output: {path}\nPreview:\n{output[:2000]}\n</persisted-output>"
 
 def tool_result_budget(messages, max_bytes=200_000):
+    # 1. 查看 messages 最后一条是不是 user 消息，有没有 tool_result
     last = messages[-1] if messages else None
     if not last or last.get("role") != "user" or not isinstance(last.get("content"), list): return messages
+    
+    # 2. 找到所有 tool_result
     blocks = [(i, b) for i, b in enumerate(last["content"]) if isinstance(b, dict) and b.get("type") == "tool_result"]
+    
+    # 3. 计算总大小
     total = sum(len(str(b.get("content", ""))) for _, b in blocks)
+
+    # 4. 如果低于阈值（200KB），不处理
     if total <= max_bytes: return messages
+
+    # 5. 超过阈值：按大小降序排列，从最大的开始处理
     ranked = sorted(blocks, key=lambda p: len(str(p[1].get("content", ""))), reverse=True)
     for _, block in ranked:
-        if total <= max_bytes: break
+        if total <= max_bytes: break # ← 降到阈值以下就停止
         content = str(block.get("content", ""))
         if len(content) <= PERSIST_THRESHOLD: continue
         tid = block.get("tool_use_id", "unknown")
+        # 写入磁盘
         block["content"] = persist_large_output(tid, content)
         total = sum(len(str(b.get("content", ""))) for _, b in blocks)
     return messages
